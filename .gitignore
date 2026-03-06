@@ -2,3 +2,4 @@
 .idea/
 __pycache__/
 *.pyc
+.discogs_oauth_token.json
