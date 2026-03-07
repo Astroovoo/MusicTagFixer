@@ -18,7 +18,7 @@ from mutagen.id3 import ID3, ID3NoHeaderError
 
 from fix_mp3_japanese_mojibake import fix_mojibake, fix_tags, iter_mp3_files
 
-APP_VERSION = '2026.03.06-scan-paths-v7'
+APP_VERSION = '2026.03.06-scan-paths-v8'
 
 
 def checked(flag: bool) -> str:
@@ -202,10 +202,15 @@ def _sanitize_filename_stem(text: str) -> str:
 
 
 def _extract_track_prefix(stem: str) -> str:
-    m = re.match(r"^(\d{1,3}\s*[-_.]?\s+)", stem)
+    # Keep original numbering prefix style, e.g. "01-", "01.", "01_", "01 ".
+    m = re.match(r"^(\d{1,3}(?:\s*[-_.]\s*|\s+))", stem)
     if m:
         return m.group(1)
     return ""
+
+
+def _has_track_prefix(stem: str) -> bool:
+    return re.match(r"^\d{1,3}(?:\s*[-_.]\s*|\s+)", stem) is not None
 
 
 def _title_candidate_from_tags(path: Path, original_stem: str) -> Optional[str]:
@@ -248,7 +253,7 @@ def _title_candidate_from_tags(path: Path, original_stem: str) -> Optional[str]:
         return None
 
     prefix = _extract_track_prefix(original_stem)
-    if prefix and not re.match(r"^\d{1,3}\s*[-_.]?\s+", best):
+    if prefix and not _has_track_prefix(best):
         best = prefix + best
 
     best = _sanitize_filename_stem(best)
@@ -322,6 +327,11 @@ def fix_filename_web(path: Path, dry_run: bool) -> Tuple[bool, str, Optional[Pat
         new_stem = algo_stem
     elif tag_title_stem and _quality_filename_text(tag_title_stem) < _quality_filename_text(original):
         new_stem = tag_title_stem
+
+    prefix = _extract_track_prefix(original)
+    if prefix and not _has_track_prefix(new_stem):
+        core = re.sub(r"^[-_.\s]+", "", new_stem)
+        new_stem = prefix + core
 
     new_stem = _sanitize_filename_stem(new_stem)
     if new_stem == original or not new_stem:
@@ -784,6 +794,10 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+
+
 
 
 
